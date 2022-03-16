@@ -1,4 +1,4 @@
-from Node import Node
+from parsing.Node import Node
 
 
 class ParserState:

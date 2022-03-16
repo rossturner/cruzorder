@@ -1,6 +1,5 @@
 
 
-
 def tokenize_line(line, tokens):
     if line == '':
         return tokens
