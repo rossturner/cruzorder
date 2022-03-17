@@ -9,7 +9,7 @@ CHAR_NAME = 4
 STARTING_TITLE = 5
 HIGHEST_TITLE = 6
 FATE = 7
-PRESTIGE = 8
+GLORY = 8
 LIVING = 9
 DEAD = 10
 
@@ -31,7 +31,7 @@ class SheetWrapper:
         assert headers[0][STARTING_TITLE].value == 'Starting Primary Title'
         assert headers[0][HIGHEST_TITLE].value == 'Highest Title Held by Dynasty'
         assert headers[0][FATE].value == 'Fate'
-        assert headers[0][PRESTIGE].value == 'Prestige'
+        assert headers[0][GLORY].value == 'Glory'
         assert headers[0][LIVING].value == 'Living'
         assert headers[0][DEAD].value == 'Dead'
 

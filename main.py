@@ -1,22 +1,34 @@
+from parsing import TitleSorter
 from parsing.SaveParser import read_save_file
 import pygsheets
 
 from sheets.SheetWrapper import *
 
-TEST_SHEET_ID = '1hCy3PKI7VSc0Fh_XyHfipHfiS_EwEO54b-PyVN0b7BE'
+TEST_SHEET_ID = '1U1_8AsH52t7I9fVvc4QmpiWAG6ioPlM1E_bjcNj7cYc'
 LIVE_SHEET_ID = '1nOyDZ1WRqC1-aKH90KDZFb-aZoRJfIoGn0IUnLKprUI'
 
 
-def count_characters(character_dict, house_ids):
-    counter = 0
-    for character_data in character_dict.values():
+def get_character_ids_for_houses(character_dict, house_ids):
+    character_ids = []
+    for character_id, character_data in character_dict.items():
         if 'dynasty_house' in character_data.children and character_data.children['dynasty_house'] in house_ids:
-            counter = counter + 1
-    return counter
+            character_ids.append(character_id)
+    return character_ids
+
+
+def get_historic_titles(title_dict, character_ids):
+    title_keys = set()
+    for title in title_dict.values():
+        if title != 'none' and 'history' in title.children:
+            history = title.children['history']
+            for holder in history.children.values():
+                if holder in character_ids:
+                    title_keys.add(title.children['key'])
+    return title_keys
 
 
 if __name__ == '__main__':
-    sheet = SheetWrapper(LIVE_SHEET_ID)
+    sheet = SheetWrapper(TEST_SHEET_ID)
     root_node = read_save_file('gamestate')
     # print('Parsing complete!')
 
@@ -35,7 +47,7 @@ if __name__ == '__main__':
 
         living = 0
         dead = 0
-        prestige = 0
+        accumulated_renown = 0
 
         if character_data is None:
             print('Could not find character with ID ' + character_id)
@@ -49,11 +61,22 @@ if __name__ == '__main__':
                     house_ids.append(house_id)
 
             dynasty_data = root_node.children['dynasties'].children['dynasties'].children[dynasty_id]
-            prestige = int(float(dynasty_data.children['prestige'].children['accumulated']))
-            living = count_characters(root_node.children['living'].children, house_ids)
-            dead = count_characters(root_node.children['dead_unprunable'].children, house_ids)
+            accumulated_renown = int(float(dynasty_data.children['prestige'].children['accumulated']))
 
-        row[PRESTIGE] = str(prestige)
+            living_character_ids = get_character_ids_for_houses(root_node.children['living'].children, house_ids)
+            dead_character_ids = get_character_ids_for_houses(root_node.children['dead_unprunable'].children, house_ids)
+
+            living = len(living_character_ids)
+            dead = len(dead_character_ids)
+
+            all_character_ids = living_character_ids + dead_character_ids
+
+            print('Looking up historic titles for ' + ', '.join(all_character_ids))
+            historic_titles = get_historic_titles(root_node.children['landed_titles'].children['landed_titles'].children, all_character_ids)
+            historic_titles = TitleSorter.get_highest_title_keys(historic_titles)
+            print('Found ' + ' '.join(historic_titles))
+
+        row[GLORY] = str(accumulated_renown)
         row[LIVING] = str(living)
         row[DEAD] = str(dead)
         print('Updating dynasty ' + row[DYNASTY] + '\n')
