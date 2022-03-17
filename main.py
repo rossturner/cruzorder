@@ -1,74 +1,65 @@
 from parsing.SaveParser import read_save_file
+import pygsheets
+
+from sheets.SheetWrapper import *
+
+TEST_SHEET_ID = '1hCy3PKI7VSc0Fh_XyHfipHfiS_EwEO54b-PyVN0b7BE'
+LIVE_SHEET_ID = '1nOyDZ1WRqC1-aKH90KDZFb-aZoRJfIoGn0IUnLKprUI'
+
+
+def count_characters(character_dict, house_ids):
+    counter = 0
+    for character_data in character_dict.values():
+        if 'dynasty_house' in character_data.children and character_data.children['dynasty_house'] in house_ids:
+            counter = counter + 1
+    return counter
 
 
 if __name__ == '__main__':
+    sheet = SheetWrapper(LIVE_SHEET_ID)
     root_node = read_save_file('gamestate')
-    # root_node = read_save_file('religions_test.txt')
+    # print('Parsing complete!')
 
-    print('Parsing complete!')
 
-    historic_characters = {
-        'orenog': '777101',
-        'Gengar': '777301',
-        'Kaosubaloo': '777401',
-        'majorbyte': '777201',
-        'PhageForge': '777601',
-        'AussieVikingr': '777701',
-        'Cobra1297': '777801',
-        'Harringzord': '777901',
-        'Bazik': '7771001',
-        'zsinj001': '7771201',
-        'Metal': '7771301',
-        'Razta': '7771401'
-    }
+    row = sheet.get_next_row()
+    while row is not None:
+        historic_character_id = str(int(row[DYNASTY_ID]) + 1)
+        character_id = root_node.children['character_lookup'].children[historic_character_id]
 
-    current_characters = {}
-    for player_name, historic_id in historic_characters.items():
-        current_characters[player_name] = root_node.children['character_lookup'].children[historic_id]
-
-    players_data = []
-
-    for played_character in root_node.children['played_character_list']:
-        if played_character.children['player'] != '-1':
-            current_characters[played_character.children['name']] = played_character.children['character']
-
-    for player_name, character_id in current_characters.items():
-        player = {
-            'name': player_name,
-            'character_id': character_id
-        }
+        print('Finding character data for ' + row[DYNASTY])
         character_data = None
-        if player['character_id'] in root_node.children['living'].children:
+        if character_id in root_node.children['living'].children:
             character_data = root_node.children['living'].children[character_id]
-        elif player['character_id'] in root_node.children['dead_unprunable'].children:
+        elif character_id in root_node.children['dead_unprunable'].children:
             character_data = root_node.children['dead_unprunable'].children[character_id]
 
+        living = 0
+        dead = 0
+        prestige = 0
+
         if character_data is None:
-            print('Could not find character ' + character_id)
-            player['character_name'] = 'Unknown'
-            player['renown'] = 0
-            player['prestige_accumulated'] = 0
+            print('Could not find character with ID ' + character_id)
         else:
-            player['character_name'] = character_data.children['first_name']
-            player['dynasty_house_id'] = character_data.children['dynasty_house']
+            character_house_id = character_data.children['dynasty_house']
+            dynasty_id = root_node.children['dynasties'].children['dynasty_house'].children[character_house_id].children['dynasty']
 
-            player['dynasty_id'] = root_node.children['dynasties'].children['dynasty_house'].children[player['dynasty_house_id']].children['dynasty']
-            if 'localized_name' in root_node.children['dynasties'].children['dynasty_house'].children[player['dynasty_house_id']].children:
-                player['dynasty_name'] = root_node.children['dynasties'].children['dynasty_house'].children[player['dynasty_house_id']].children['localized_name']
-            else:
-                player['dynasty_name'] = root_node.children['dynasties'].children['dynasty_house'].children[player['dynasty_house_id']].children['name']
+            house_ids = []
+            for house_id, house_data in root_node.children['dynasties'].children['dynasty_house'].children.items():
+                if house_data.children['dynasty'] == dynasty_id:
+                    house_ids.append(house_id)
 
-            dynasty_data = root_node.children['dynasties'].children['dynasties'].children[player['dynasty_id']]
-            player['renown'] = int(float(dynasty_data.children['prestige'].children['currency']))
-            player['prestige_accumulated'] = int(float(dynasty_data.children['prestige'].children['accumulated']))
+            dynasty_data = root_node.children['dynasties'].children['dynasties'].children[dynasty_id]
+            prestige = int(float(dynasty_data.children['prestige'].children['accumulated']))
+            living = count_characters(root_node.children['living'].children, house_ids)
+            dead = count_characters(root_node.children['dead_unprunable'].children, house_ids)
 
-        players_data.append(player)
+        row[PRESTIGE] = str(prestige)
+        row[LIVING] = str(living)
+        row[DEAD] = str(dead)
+        print('Updating dynasty ' + row[DYNASTY] + '\n')
+        sheet.update_current_row(row)
 
-    players_data = sorted(players_data, key=lambda p:  p['prestige_accumulated'], reverse=True)
+        row = sheet.get_next_row()
 
-    print('\n')
-    print('Player,Character,Dynasty,Renown,Prestige (accumulated renown)')
-    for player_data in players_data:
-        print(player_data['name'] + ',' + player_data['character_name'] + ',' + player_data['dynasty_name'] + ',' + player_data['renown'] + ',' + player_data['prestige_accumulated'])
-
+    print('Done!')
 
