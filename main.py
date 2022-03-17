@@ -2,6 +2,8 @@ from parsing import TitleSorter
 from parsing.SaveParser import read_save_file
 import pygsheets
 
+from parsing.TitleFormatter import TitleFormatter
+from parsing.TitleNames import TitleNames
 from sheets.SheetWrapper import *
 
 TEST_SHEET_ID = '1U1_8AsH52t7I9fVvc4QmpiWAG6ioPlM1E_bjcNj7cYc'
@@ -30,6 +32,7 @@ def get_historic_titles(title_dict, character_ids):
 if __name__ == '__main__':
     sheet = SheetWrapper(TEST_SHEET_ID)
     root_node = read_save_file('gamestate')
+    title_formatter = TitleFormatter()
     # print('Parsing complete!')
 
 
@@ -48,6 +51,7 @@ if __name__ == '__main__':
         living = 0
         dead = 0
         accumulated_renown = 0
+        highest_titles = ''
 
         if character_data is None:
             print('Could not find character with ID ' + character_id)
@@ -75,7 +79,9 @@ if __name__ == '__main__':
             historic_titles = get_historic_titles(root_node.children['landed_titles'].children['landed_titles'].children, all_character_ids)
             historic_titles = TitleSorter.get_highest_title_keys(historic_titles)
             print('Found ' + ' '.join(historic_titles))
+            highest_titles = title_formatter.titles_to_string(historic_titles)
 
+        row[HIGHEST_TITLE] = highest_titles
         row[GLORY] = str(accumulated_renown)
         row[LIVING] = str(living)
         row[DEAD] = str(dead)
