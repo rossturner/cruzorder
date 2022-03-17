@@ -1,4 +1,5 @@
 from parsing import TitleSorter
+from parsing.Node import Node
 from parsing.SaveParser import read_save_file
 import pygsheets
 
@@ -18,19 +19,35 @@ def get_character_ids_for_houses(character_dict, house_ids):
     return character_ids
 
 
+def title_was_held(holder, character_ids):
+    if isinstance(holder, list):
+        for list_item in holder:
+            if title_was_held(list_item, character_ids):
+                return True
+        return False
+
+    if isinstance(holder, Node) and 'holder' in holder.children:
+        # Need to drill down into holder nodes which aren't just a literal value
+        holder = holder.children['holder']
+    return holder in character_ids
+
+
+
 def get_historic_titles(title_dict, character_ids):
     title_keys = set()
     for title in title_dict.values():
         if title != 'none' and 'history' in title.children:
             history = title.children['history']
             for holder in history.children.values():
-                if holder in character_ids:
+                if title_was_held(holder, character_ids):
                     title_keys.add(title.children['key'])
+
     return title_keys
 
 
 if __name__ == '__main__':
     sheet = SheetWrapper(TEST_SHEET_ID)
+    # sheet = SheetWrapper(LIVE_SHEET_ID)
     root_node = read_save_file('gamestate')
     title_formatter = TitleFormatter()
     # print('Parsing complete!')
