@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
             house_ids = []
             for house_id, house_data in root_node.children['dynasties'].children['dynasty_house'].children.items():
-                if house_data.children['dynasty'] == dynasty_id:
+                if isinstance(house_data, Node) and house_data.children['dynasty'] == dynasty_id:
                     house_ids.append(house_id)
 
             dynasty_data = root_node.children['dynasties'].children['dynasties'].children[dynasty_id]
